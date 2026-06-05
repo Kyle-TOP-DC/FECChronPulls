@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Super PAC Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f5f0e6; --ink:#191512; --muted:#8a7f72;
+    --accent:#ffa41f; --ltf:#d2641c; --pf:#2f6f6a;
+    --line:rgba(25,21,18,.14); --card:#fffdf8;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --display:'Fraunces',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--mono); font-size:14px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(rgba(25,21,18,.035) 1px,transparent 1px);
+    background-size:22px 22px;
+  }
+  .wrap{max-width:1040px; margin:0 auto; padding:48px 28px 80px}
+  /* header */
+  .eyebrow{font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--ltf); font-weight:600; margin-bottom:14px}
+  h1{font-family:var(--display); font-weight:900; font-size:clamp(40px,7vw,76px);
+    line-height:.95; letter-spacing:-.02em; margin:0 0 16px;
+    font-optical-sizing:auto}
+  .dek{font-family:var(--display); font-weight:400; font-size:clamp(16px,2.2vw,21px);
+    max-width:62ch; color:#3a332c; margin:0 0 18px; line-height:1.4}
+  .updated{font-size:12px; color:var(--muted); letter-spacing:.02em;
+    border-top:1px solid var(--line); padding-top:14px}
+  .updated b{color:var(--ink); font-weight:600}
+  /* preview banner */
+  #preview{display:none; margin:20px 0 0; padding:11px 16px; font-size:12.5px;
+    background:var(--ink); color:var(--paper); letter-spacing:.02em}
+  #preview code{color:var(--accent)}
+  /* kpis */
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+    background:var(--line); border:1px solid var(--line); margin:40px 0 56px}
+  .kpi{background:var(--card); padding:22px 20px 20px}
+  .kpi .lab{font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:12px}
+  .kpi .val{font-family:var(--display); font-weight:900; font-size:clamp(26px,3.4vw,40px);
+    letter-spacing:-.02em; line-height:1}
+  .kpi:first-child .val{color:var(--ltf)}
+  /* section heads */
+  h2{font-family:var(--display); font-weight:600; font-size:24px; margin:0 0 4px;
+    letter-spacing:-.01em}
+  .sub{font-size:12px; color:var(--muted); margin:0 0 24px}
+  /* bars */
+  .legend{display:flex; gap:22px; margin:0 0 22px; font-size:12px}
+  .legend span{display:flex; align-items:center; gap:7px}
+  .dot{width:10px; height:10px; border-radius:2px; display:inline-block}
+  .bar-row{margin-bottom:16px}
+  .bar-top{display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:6px; gap:12px}
+  .bar-name{font-weight:500}
+  .bar-val{font-variant-numeric:tabular-nums; color:#3a332c; white-space:nowrap}
+  .track{height:14px; background:rgba(25,21,18,.06); position:relative; overflow:hidden}
+  .fill{height:100%; width:0; transition:width 1s cubic-bezier(.2,.7,.2,1)}
+  /* table */
+  .tbl-scroll{overflow-x:auto; border:1px solid var(--line); margin-top:8px}
+  table{border-collapse:collapse; width:100%; min-width:760px; font-size:12.5px}
+  th,td{padding:11px 14px; text-align:right; white-space:nowrap;
+    border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:var(--ink); color:var(--paper); font-weight:500;
+    font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer;
+    position:sticky; top:0; user-select:none}
+  thead th:hover{color:var(--accent)}
+  thead th .arr{opacity:.4; font-size:9px; margin-left:4px}
+  tbody tr:hover{background:rgba(255,164,31,.06)}
+  td.name{font-weight:600}
+  .tag{display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:8px;
+    vertical-align:middle}
+  .num{font-variant-numeric:tabular-nums}
+  .dash{color:var(--muted)}
+  /* notes */
+  .notes{margin-top:48px; border-top:1px solid var(--line); padding-top:24px;
+    font-size:12.5px; color:#4a423a; max-width:74ch}
+  .notes h3{font-family:var(--display); font-size:15px; margin:0 0 10px; font-weight:600}
+  .notes p{margin:0 0 10px}
+  .notes b{color:var(--ink)}
+  @media(max-width:640px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .wrap{padding:32px 18px 60px}
+  }
+  /* staggered load */
+  .reveal{opacity:0; transform:translateY(10px); animation:rise .6s forwards}
+  @keyframes rise{to{opacity:1; transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow reveal" style="animation-delay:.05s">Tech Oversight Project</div>
+    <h1 class="reveal" style="animation-delay:.1s">AI Super&nbsp;PAC Tracker</h1>
+    <p class="dek reveal" style="animation-delay:.18s">Money raised, independent expenditures, and
+      electioneering by the super PACs and aligned groups shaping U.S. AI policy in the 2026 cycle.</p>
+    <div class="updated reveal" style="animation-delay:.26s">Updated <b id="updated">—</b>
+      · Cycle <b id="cycle">2026</b> · Source: Federal Election Commission</div>
+    <div id="preview">Preview data shown. Point <code>DATA_URL</code> at your live
+      <code>totals.json</code> to go live.</div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section>
+    <h2>Money raised by committee</h2>
+    <p class="sub">Total receipts reported to the FEC this cycle.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--ltf)"></i>Leading the Future network</span>
+      <span><i class="dot" style="background:var(--pf)"></i>Public First network</span>
+    </div>
+    <div id="bars"></div>
+  </section>
+
+  <section style="margin-top:56px">
+    <h2>Detail</h2>
+    <p class="sub">Click a column header to sort. All figures in USD.</p>
+    <div class="tbl-scroll">
+      <table id="table">
+        <thead><tr id="head"></tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="notes">
+    <h3>About these numbers</h3>
+    <p><b>Money raised / spending / cash on hand</b> come from each committee's processed
+      FEC reports, which update nightly and lag real activity by about a day.</p>
+    <p><b>Real-time IE estimate</b> sums independent-expenditure line items from the FEC's
+      real-time e-filing feed (last ~4 months). It is an unofficial leading indicator —
+      not amendment-resolved — so the processed independent-expenditures figure is authoritative.</p>
+    <p><b>Electioneering</b> applies to filers like Public First Action Inc. that report
+      candidate-naming issue ads (Form 9) rather than express-advocacy IEs. Such groups don't
+      itemize donors to the FEC, so their <b>raised</b> figure is intentionally blank.</p>
+  </footer>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────
+// Point this at the totals.json your tracker commits. A relative path works if
+// the file sits next to this page; otherwise use the raw GitHub URL, e.g.
+// "https://raw.githubusercontent.com/<you>/<repo>/main/totals.json"
+const DATA_URL = "totals.json";
+
+// Visual grouping only — maps committee_id → network (factual affiliation).
+const NETWORKS = {
+  C00916114:"ltf", C00923417:"ltf", C00916692:"ltf",
+  C00930503:"pf", C00928374:"pf", C00928390:"pf", C30003586:"pf",
+};
+const NET_COLOR = {ltf:"var(--ltf)", pf:"var(--pf)"};
+
+// Preview fallback (clearly flagged) so the page renders before it's wired up.
+const SAMPLE = {
+  cycle:2026, last_updated_utc:"preview",
+  aggregate:{receipts:99830000, independent_expenditures:13010000,
+    realtime_ie_est:14200000, electioneering_spend:0, disbursements:38600000},
+  committees:[
+    {committee_id:"C00916114", name:"Leading the Future", receipts:75540000,
+     independent_expenditures:0, realtime_ie_est:0, electioneering_spend:null,
+     disbursements:24390000, cash_on_hand_end:51140000, coverage_end_date:"2026-03-31"},
+    {committee_id:"C00923417", name:"Think Big", receipts:10500000,
+     independent_expenditures:6130000, realtime_ie_est:6500000, electioneering_spend:null,
+     disbursements:6660000, cash_on_hand_end:3840000, coverage_end_date:"2026-03-31"},
+    {committee_id:"C00916692", name:"American Mission", receipts:5250000,
+     independent_expenditures:3200000, realtime_ie_est:3400000, electioneering_spend:null,
+     disbursements:3100000, cash_on_hand_end:2100000, coverage_end_date:"2026-03-31"},
+    {committee_id:"C00928374", name:"Jobs and Democracy PAC", receipts:4540000,
+     independent_expenditures:4180000, realtime_ie_est:4300000, electioneering_spend:null,
+     disbursements:3540000, cash_on_hand_end:1010000, coverage_end_date:"2026-03-31"},
+    {committee_id:"C00928390", name:"Defending Our Values PAC", receipts:2500000,
+     independent_expenditures:1500000, realtime_ie_est:1600000, electioneering_spend:null,
+     disbursements:2200000, cash_on_hand_end:1300000, coverage_end_date:"2026-03-31"},
+    {committee_id:"C00930503", name:"Public First", receipts:1500000,
+     independent_expenditures:0, realtime_ie_est:0, electioneering_spend:null,
+     disbursements:1050000, cash_on_hand_end:445842, coverage_end_date:"2026-03-31"},
+    {committee_id:"C30003586", name:"Public First Action Inc.", receipts:null,
+     independent_expenditures:null, realtime_ie_est:null, electioneering_spend:0,
+     disbursements:null, cash_on_hand_end:null, coverage_end_date:""},
+  ],
+};
+
+// ── helpers ─────────────────────────────────────────────────────────────
+const money = n => {
+  if(n==null) return '<span class="dash">—</span>';
+  const a=Math.abs(n);
+  if(a>=1e9) return '$'+(n/1e9).toFixed(2)+'B';
+  if(a>=1e6) return '$'+(n/1e6).toFixed(2)+'M';
+  if(a>=1e3) return '$'+Math.round(n/1e3)+'K';
+  return '$'+Math.round(n);
+};
+const fmtDate = iso => {
+  if(!iso || iso==="preview") return iso==="preview" ? "preview data" : "—";
+  const d=new Date(iso); if(isNaN(d)) return iso;
+  return d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',
+    hour:'numeric',minute:'2-digit',timeZone:'UTC'})+" UTC";
+};
+
+const COLS = [
+  {k:'name', t:'Committee'},
+  {k:'receipts', t:'Raised'},
+  {k:'independent_expenditures', t:'IE (processed)'},
+  {k:'realtime_ie_est', t:'IE (real-time est.)'},
+  {k:'electioneering_spend', t:'Electioneering'},
+  {k:'disbursements', t:'Spending'},
+  {k:'cash_on_hand_end', t:'Cash on hand'},
+  {k:'coverage_end_date', t:'As of'},
+];
+
+let DATA, sortKey='receipts', sortDir=-1;
+
+function renderKPIs(a){
+  const items=[
+    ['Total raised', a.receipts],
+    ['Independent expenditures', a.independent_expenditures],
+    ['Electioneering', a.electioneering_spend],
+    ['Total spending', a.disbursements],
+  ];
+  document.getElementById('kpis').innerHTML = items.map(([l,v],i)=>
+    `<div class="kpi reveal" style="animation-delay:${.3+i*.07}s">
+       <div class="lab">${l}</div><div class="val">${money(v)}</div></div>`).join('');
+}
+
+function renderBars(rows){
+  const withRaised = rows.filter(r=>r.receipts!=null && r.receipts>0)
+                         .sort((a,b)=>b.receipts-a.receipts);
+  const max = Math.max(...withRaised.map(r=>r.receipts),1);
+  document.getElementById('bars').innerHTML = withRaised.map((r,i)=>{
+    const col = NET_COLOR[NETWORKS[r.committee_id]] || 'var(--muted)';
+    return `<div class="bar-row reveal" style="animation-delay:${.35+i*.05}s">
+      <div class="bar-top"><span class="bar-name">${r.name}</span>
+        <span class="bar-val">${money(r.receipts)}</span></div>
+      <div class="track"><div class="fill" data-w="${(r.receipts/max*100).toFixed(1)}"
+        style="background:${col}"></div></div></div>`;
+  }).join('');
+  requestAnimationFrame(()=>document.querySelectorAll('.fill')
+    .forEach(f=>f.style.width=f.dataset.w+'%'));
+}
+
+function renderTable(rows){
+  document.getElementById('head').innerHTML = COLS.map(c=>{
+    const arr = c.k===sortKey ? (sortDir<0?'▼':'▲') : '';
+    return `<th data-k="${c.k}">${c.t}<span class="arr">${arr}</span></th>`;
+  }).join('');
+
+  const sorted = [...rows].sort((a,b)=>{
+    let x=a[sortKey], y=b[sortKey];
+    if(x==null) return 1; if(y==null) return -1;
+    if(typeof x==='string') return sortDir*x.localeCompare(y);
+    return sortDir*(x-y);
+  });
+
+  document.getElementById('body').innerHTML = sorted.map(r=>{
+    const col = NET_COLOR[NETWORKS[r.committee_id]] || 'var(--muted)';
+    const cell = c => c.k==='name'
+      ? `<td class="name"><span class="tag" style="background:${col}"></span>${r.name}</td>`
+      : c.k==='coverage_end_date'
+        ? `<td class="num">${r[c.k] || '<span class="dash">—</span>'}</td>`
+        : `<td class="num">${money(r[c.k])}</td>`;
+    return '<tr>'+COLS.map(cell).join('')+'</tr>';
+  }).join('');
+
+  document.querySelectorAll('#head th').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;
+    if(k===sortKey) sortDir*=-1; else {sortKey=k; sortDir=(k==='name'?1:-1);}
+    renderTable(rows);
+  });
+}
+
+function render(d, isPreview){
+  DATA=d;
+  document.getElementById('updated').textContent = fmtDate(d.last_updated_utc);
+  document.getElementById('cycle').textContent = d.cycle ?? '—';
+  if(isPreview) document.getElementById('preview').style.display='block';
+  renderKPIs(d.aggregate||{});
+  renderBars(d.committees||[]);
+  renderTable(d.committees||[]);
+}
+
+fetch(DATA_URL,{cache:'no-store'})
+  .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d=>render(d,false))
+  .catch(()=>render(SAMPLE,true));
+</script>
+</body>
+</html>
