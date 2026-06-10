@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CivicPulse Admin</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --ink: #1c2733; --muted: #67707b;
+    --accent: #1d4ed8; --accent-soft: #e8eefc; --ok: #15803d; --warn: #b45309;
+    --border: #e3e6ea;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0 14px 0 0; }
+  nav button { border: 0; background: none; padding: 8px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; color: var(--muted); }
+  nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  #tokenBox { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  main { max-width: 1100px; margin: 24px auto; padding: 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 12px; font-size: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  tr:hover td { background: #fafbfc; }
+  input, textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+  textarea { min-height: 70px; resize: vertical; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; font-weight: 600; }
+  button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font-weight: 600; cursor: pointer; }
+  button.small { background: var(--accent-soft); color: var(--accent); border: 0; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+  button.small.danger { background: #fdecec; color: #b91c1c; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.on { background: #e7f6ec; color: var(--ok); }
+  .badge.off { background: #f1f2f4; color: var(--muted); }
+  .badge.replied { background: #e7f6ec; color: var(--ok); }
+  .badge.sent { background: var(--accent-soft); color: var(--accent); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  #toast { position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #toast.show { opacity: .95; }
+  .replybox { background: #f0f7f1; border-left: 3px solid var(--ok); padding: 6px 10px; border-radius: 6px; margin-top: 6px; white-space: pre-wrap; }
+  details > summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  pre.msgbody { white-space: pre-wrap; font: 13px/1.4 inherit; background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏛️ CivicPulse Admin</h1>
+  <nav>
+    <button data-tab="articles" class="active">Articles &amp; Push</button>
+    <button data-tab="engagement">Engagement</button>
+    <button data-tab="contacts">Congressional Contacts</button>
+    <button data-tab="candidates">Candidates</button>
+  </nav>
+  <div id="tokenBox">
+    <input id="adminToken" type="password" placeholder="Admin token" style="width:180px">
+    <button class="small" onclick="saveToken()">Save</button>
+  </div>
+</header>
+<main>
+  <!-- ARTICLES -->
+  <section id="tab-articles">
+    <div class="card">
+      <h2>Curate a new article</h2>
+      <div class="grid2">
+        <div><label>Title</label><input id="a-title"></div>
+        <div><label>Source</label><input id="a-source" placeholder="e.g. NYT"></div>
+      </div>
+      <label>URL</label><input id="a-url" placeholder="https://…">
+      <div class="grid2">
+        <div><label>Image URL (optional)</label><input id="a-image"></div>
+        <div><label>Tags (comma separated)</label><input id="a-tags" placeholder="ai-safety, legislation"></div>
+      </div>
+      <label>Summary (leave blank + paste article text below to auto-generate with AI)</label>
+      <textarea id="a-summary"></textarea>
+      <label>Article text for AI summary (optional, not stored)</label>
+      <textarea id="a-text"></textarea>
+      <label>Your note to readers (shows in the feed and in pushes)</label>
+      <textarea id="a-note" placeholder="Why this article matters…"></textarea>
+      <p><button class="primary" onclick="createArticle()">Publish article</button></p>
+    </div>
+    <div class="card">
+      <h2>Send a push notification</h2>
+      <div class="grid2">
+        <div><label>Attach to article</label><select id="p-article"></select></div>
+        <div><label>Push title</label><input id="p-title" placeholder="New: AI safety bill moves forward"></div>
+      </div>
+      <label>Your brief thoughts (push body)</label>
+      <textarea id="p-note"></textarea>
+      <p><button class="primary" onclick="sendPush()">Send to all devices</button></p>
+    </div>
+    <div class="card">
+      <h2>All articles</h2>
+      <table id="articlesTable">
+        <thead><tr><th>Title</th><th>Source</th><th>Status</th><th>Created</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ENGAGEMENT -->
+  <section id="tab-engagement" hidden>
+    <div class="card">
+      <h2>What people are engaging with</h2>
+      <p class="muted">Views = opened from feed · Reads = finished loading the article · Actions = opened the "Tell Congress" flow · Messages = messages to Congress generated from this article.</p>
+      <table id="engagementTable">
+        <thead><tr><th>Article</th><th>Views</th><th>Reads</th><th>Shares</th><th>Actions</th><th>Messages</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CONTACTS -->
+  <section id="tab-contacts" hidden>
+    <div class="card">
+      <h2>Which offices are being contacted</h2>
+      <table id="contactsTable">
+        <thead><tr><th>Member</th><th>Role</th><th>State</th><th>Messages</th><th>Replied</th><th>Last contact</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card" id="officeDetail" hidden>
+      <h2 id="officeDetailTitle">Messages</h2>
+      <div id="officeMessages"></div>
+    </div>
+  </section>
+
+  <!-- CANDIDATES -->
+  <section id="tab-candidates" hidden>
+    <div class="card">
+      <h2>Add a pro-AI-safety candidate</h2>
+      <div class="grid2">
+        <div><label>Name</label><input id="c-name"></div>
+        <div><label>Office sought</label><input id="c-office" placeholder="U.S. Senate, CA"></div>
+      </div>
+      <div class="grid2">
+        <div><label>State (2 letters)</label><input id="c-state" maxlength="2"></div>
+        <div><label>Party</label><input id="c-party"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Website</label><input id="c-website"></div>
+        <div><label>Donate URL</label><input id="c-donate"></div>
+      </div>
+      <label>Why we support them</label><textarea id="c-blurb"></textarea>
+      <p><button class="primary" onclick="createCandidate()">Add candidate</button></p>
+    </div>
+    <div class="card">
+      <h2>Current candidates</h2>
+      <table id="candidatesTable">
+        <thead><tr><th>Name</th><th>Office</th><th>State</th><th>Party</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
